@@ -1,5 +1,4 @@
-from bottle import route, run
+from mini_redis import start_up
 
-from routes import *
-
-run(host="localhost", port=8080, debug=True)
+if __name__ == "__main__":
+    start_up()

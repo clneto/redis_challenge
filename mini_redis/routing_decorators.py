@@ -1,5 +1,7 @@
 # Playing around with some class style of routing using decorators
+
 from bottle import run, Bottle
+import logging
 
 class Controller:
     __controllers = {}
@@ -37,28 +39,6 @@ class Route:
         return (Route.__WRAPPED_METHOD_KEY, self.__method, self.__path, _bound_method)
 
 
-@Controller(path="/simple")
-class SimpleController:
-
-    @Route(method="GET", path="/1")
-    def index(self):
-        return "index"
-
-    @Route(method="GET", path="/2/<param>")
-    def other(self, param):
-        return "other {}".format(param)
-
-@Controller(path="/second")
-class SecondController:
-
-    @Route(method="GET", path="/1")
-    def index(self):
-        return "index"
-
-    @Route(method="GET", path="/2/<param>")
-    def other(self, param):
-        return "other {}".format(param)
-
 # binding everything
 def register_routes(app):
     instances = Controller.get_controllers()
@@ -70,7 +50,3 @@ def register_routes(app):
             if Route.is_wrapped_method(rt):
                 Route.set_up_route(app, base_path, rt)
 
-if __name__ == "__main__":
-    app = Bottle()
-    register_routes(app)
-    app.run(host="localhost", port=8080, debug=True)

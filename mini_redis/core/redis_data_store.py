@@ -12,11 +12,7 @@ class RedisDataStore(ABC):
         pass
 
     @abstractmethod
-    def set(self, key, value):
-        pass
-
-    @abstractmethod
-    def setEx(self, key, value, ex):
+    def set(self, key, value, ex):
         pass
 
     @abstractmethod
