@@ -12,7 +12,7 @@ class GeneralController:
 
     @Route(method="POST", path="cmd")
     def processCmd(self):
-        return "other {}"
+        return self.cmd_handler.processCmd(request.json)
 
     @Route(method="GET", path="healthcheck")
     def getHealthcheck(self):

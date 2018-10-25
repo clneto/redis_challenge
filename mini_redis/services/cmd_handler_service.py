@@ -6,21 +6,21 @@ def safe_get(obj, field):
     return None
 
 def set_handler(cmdRequest, mini_redis):
-    mini_redis.set(safe_get(cmdRequest, "key"),
+    return mini_redis.set(safe_get(cmdRequest, "key"),
                    safe_get(cmdRequest, "value"),
                    safe_get(cmdRequest, "ex"))
 
 def get_handler(cmdRequest, mini_redis):
-    mini_redis.get(safe_get(cmdRequest, "key"))
+    return mini_redis.get(safe_get(cmdRequest, "key"))
 
 def del_handler(cmdRequest, mini_redis):
-    mini_redis.delete(safe_get(cmdRequest, "key"))
+    return mini_redis.delete(safe_get(cmdRequest, "key"))
 
 def dbsize_handler(cmdRequest, mini_redis):
     return mini_redis.dbsize()
 
 def incr_handler(cmdRequest, mini_redis):
-    mini_redis.incr(safe_get(cmdRequest, "key"))
+    return mini_redis.incr(safe_get(cmdRequest, "key"))
 
 
 class CmdHandlerService:
@@ -37,8 +37,9 @@ class CmdHandlerService:
 
 
     def processCmd(self, cmdRequest):
-        handler = self.cmd_handler[cmdRequest.cmd]
+        cmd = safe_get(cmdRequest, "cmd").lower()
+        handler = self.cmd_handler[cmd]
         if handler is None:
             return "Yet unsupported command"
 
-        return handler(cmdRequest.cmd, CmdHandlerService.mini_redis)
+        return handler(cmdRequest, CmdHandlerService.mini_redis)

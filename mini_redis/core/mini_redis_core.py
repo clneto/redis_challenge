@@ -17,24 +17,24 @@ class MiniRedisCore(RedisDataStore):
             # acquire lock
             value = self.value
             # release lock
-            return value
+            return str(value)
 
         def incr(self):
             # acquire lock
-            value = self.value+1
+            self.value += 1
             # release lock
-            return value
+            return "OK"
 
 
     db_size = 0
     core_data = {}
 
     def dbsize(self):
-        return MiniRedisCore.db_size
+        return str(MiniRedisCore.db_size)
 
     def get(self, key):
         # check if not changing maybe / particular lock or event-lock here
-        # lock
+        # global lock
         if key not in MiniRedisCore.core_data:
             return "(nil)"
         # release
@@ -42,13 +42,13 @@ class MiniRedisCore(RedisDataStore):
         value = MiniRedisCore.core_data[key].getValue()
 
         if value is None:
-            pass #fail gracefully
+            return "(nil)"
         return value
 
     def set(self, key, value, ex):
         if not key in MiniRedisCore.core_data:
             nodeValue = MiniRedisCore.DataNode(key, value)
-            # size lock ~ rlock
+            # global lock
             MiniRedisCore.db_size += 1
             MiniRedisCore.core_data[key] = nodeValue
             # release lock
