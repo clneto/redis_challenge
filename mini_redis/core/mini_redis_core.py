@@ -1,73 +1,85 @@
 from mini_redis.core.redis_data_store import RedisDataStore
+from threading import RLock
+from .expiration_manager import ExpirationManager
+from mini_redis.utils import Singleton
 
+@Singleton
 class MiniRedisCore(RedisDataStore):
 
     class DataNode:
         def __init__(self, key, value):
-            self.lock = {}
+            self.lock = RLock()
             self.value = value
             self.key = key
 
         def setValue(self, value):
-            # acquire lock
-            self.value = value
-            # release lock
+            with self.lock:
+                self.value = value
+
 
         def getValue(self):
-            # acquire lock
-            value = self.value
-            # release lock
+            with self.lock:
+                value = self.value
             return str(value)
 
         def incr(self):
-            # acquire lock
-            self.value += 1
-            # release lock
+            with self.lock:
+                self.value += 1
             return "OK"
 
-
-    db_size = 0
-    core_data = {}
+    def __init__(self):
+        self._global_lock = RLock()
+        self._db_size = 0
+        self._core_data = {}
+        self._expiration_manager = ExpirationManager(self.delete)
+        self._expiration_manager.run()
 
     def dbsize(self):
-        return str(MiniRedisCore.db_size)
+        return str(self._db_size)
 
     def get(self, key):
         # check if not changing maybe / particular lock or event-lock here
-        # global lock
-        if key not in MiniRedisCore.core_data:
-            return "(nil)"
-        # release
+        with self._global_lock:
+            if key not in self._core_data:
+                return "(nil)"
 
-        value = MiniRedisCore.core_data[key].getValue()
+        value = self._core_data[key].getValue()
 
         if value is None:
             return "(nil)"
         return value
 
     def set(self, key, value, ex):
-        if not key in MiniRedisCore.core_data:
-            nodeValue = MiniRedisCore.DataNode(key, value)
-            # global lock
-            MiniRedisCore.db_size += 1
-            MiniRedisCore.core_data[key] = nodeValue
-            # release lock
+        with self._global_lock:
+            if not key in self._core_data:
+                nodeValue = self.DataNode(key, value)
+                self._db_size += 1
+                self._core_data[key] = nodeValue
 
-        MiniRedisCore.core_data[key].setValue(value)
+        self._core_data[key].setValue(value)
 
         if ex is not None:
-            pass #schedule eviction
+            self._expiration_manager.addExpirationKey(key, ex)
 
         return "OK"
 
 
     def incr(self, key):
-        if key in MiniRedisCore.core_data:
-            return MiniRedisCore.core_data[key].incr()
-        return "" # failure
+        node = None
+        with self._global_lock:
+            if key in self._core_data:
+                node = self._core_data[key]
+
+        if node is not None:
+            return node.incr()
+        return "(nil)" # failure
 
     def delete(self, key):
-        pass
+        with self._global_lock:
+            if key in self._core_data:
+                del self._core_data[key]
+                return "OK"
+        return "(nil)"
 
     def zadd(self, key, score, member):
         pass
