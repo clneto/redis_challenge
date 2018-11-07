@@ -1,8 +1,8 @@
-from mini_redis.routing_decorators import Controller, Route
-from mini_redis.services import CmdHandlerService
-from bottle import request
-
 from threading import current_thread
+from bottle import request
+from ..utils.routing_decorators import Controller, Route
+from ..services import CmdHandlerService
+
 
 @Controller(path="/")
 class GeneralController:

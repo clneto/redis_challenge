@@ -1,7 +1,7 @@
-from mini_redis.core.redis_data_store import RedisDataStore
 from threading import RLock
 from .expiration_manager import ExpirationManager
-from mini_redis.utils import Singleton
+from .redis_data_store import RedisDataStore
+from ..utils import Singleton
 
 @Singleton
 class MiniRedisCore(RedisDataStore):

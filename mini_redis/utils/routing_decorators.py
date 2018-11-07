@@ -1,8 +1,5 @@
 # Playing around with some class style of routing using decorators
 
-from bottle import run, Bottle
-import logging
-
 class Controller:
     __controllers = {}
 
