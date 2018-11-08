@@ -1,4 +1,3 @@
-
 class AVLNode:
     def __init__(self, score, value):
         # data
@@ -15,10 +14,12 @@ class AVLNode:
         # caching height values
         self._height_updated = True
 
-    def _update_height(self):
-        has_left_child = self._left is None
-        has_right_child = self._right is None
+    # force cache recalculation
+    def recalculate_height(self):
+        has_left_child = self._left is not None
+        has_right_child = self._right is not None
         if not has_left_child and not has_right_child:
+            self._height = 0
             return
         max_child_height = max(0 if self._left is None else self._left.height(),
                                0 if self._right is None else self._right.height())
@@ -39,9 +40,10 @@ class AVLNode:
     def value(self):
         return self._value
 
+    # cached height, may be inconsistent if additions and removals have been performed
     def height(self):
         if not self._height_updated:
-            self._update_height()
+            self.recalculate_height()
         return self._height
 
     def left_child(self):
@@ -51,14 +53,17 @@ class AVLNode:
         return self._right
 
     def balance(self):
-        left_height = self._left.height() if self._left is not None else 0
-        right_height = self._right.height() if self._right is not None else 0
-        return abs(left_height - right_height)
+        left_height = 1 + self._left.height() if self._left is not None else 0
+        right_height = 1 + self._right.height() if self._right is not None else 0
+        return left_height - right_height
 
 class AVLTree:
 
     def __init__(self, **kwargs):
         self._root = None
+
+    def height(self):
+        return 0 if self._root is None else self._root.height()
 
     def _score_function(self, value):
         return int(value)
@@ -66,7 +71,7 @@ class AVLTree:
     def _insert_parent(self, parent, new_child):
         if parent is None:
             self._root = new_child
-        if parent.score() > new_child.score():
+        elif parent.score() > new_child.score():
             parent.set_left_child(new_child)
         else:
             parent.set_right_child(new_child)
@@ -93,7 +98,8 @@ class AVLTree:
         # time to balance
         for offset in range(2, len(path)+1):
             node = path[-offset]
-            if node.balance() > 1: # unbalanced
+            node.recalculate_height()
+            if abs(node.balance()) > 1: # unbalanced
 
                 parent = path[-offset-1] if offset < len(path) else None
                 node_score = node.score()
@@ -117,13 +123,13 @@ class AVLTree:
                         self._left_rotation(parent, node)
 
     def _left_rotation(self, parent, node):
-        new_node = node.right
+        new_node = node.right_child()
         new_node.set_left_child(node)
         node.set_right_child(None)
         self._insert_parent(parent, new_node)
 
     def _right_rotation(self, parent, node):
-        new_node = node.left
+        new_node = node.left_child()
         new_node.set_right_child(node)
         node.set_left_child(None)
         self._insert_parent(parent, new_node)
@@ -155,24 +161,63 @@ class AVLTree:
 
     def in_order_traversal_list(self):
         traverse = []
-        traversed = set()
+        accounted = set()
         ans = []
-
-        def node_traverse(node):
-            if node is not None:
-                if node not in traversed:
-                    traverse.append(node)
-                    traversed.add(node)
-                else:
-                    ans.append(node.value())
 
         if self._root is not None:
             traverse = [self._root]
 
         while len(traverse) != 0:
             it = traverse.pop()
-            node_traverse(it.right_child())
-            node_traverse(it)
-            node_traverse(it.left_child())
+            if it is not None:
+                if it not in accounted:
+                    traverse.append(it.right_child())
+                    traverse.append(it)
+                    traverse.append(it.left_child())
+                    accounted.add(it)
+                else:
+                    ans.append(it)
 
-        return ans
+        return [x.value() for x in ans]
+
+    def print(self):
+        print(self._rec_print(self._root))
+
+    def _rec_print(self, node):
+        if node is None:
+            return "(nil)"
+        return "({0}{1}{2})".format(self._rec_print(node.left_child()), node.value(), self._rec_print(node.right_child()))
+
+
+
+if __name__ == "__main__":
+    tree = AVLTree()
+    tree.add_value("3")
+    tree.add_value("2")
+    tree.add_value("1")
+    tree.print()
+    print(tree.height())
+    tree = AVLTree()
+    tree.add_value("1")
+    tree.add_value("2")
+    tree.add_value("3")
+    tree.print()
+    print(tree.height())
+    tree = AVLTree()
+    tree.add_value("1")
+    tree.add_value("3")
+    tree.add_value("2")
+    tree.print()
+    print(tree.height())
+    tree = AVLTree()
+    tree.add_value("3")
+    tree.add_value("1")
+    tree.add_value("2")
+    tree.print()
+    print(tree.height())
+    tree = AVLTree()
+    tree.add_value("3")
+    tree.add_value("3")
+    tree.add_value("3")
+    tree.print()
+    print(tree.height())
