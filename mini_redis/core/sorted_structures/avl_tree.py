@@ -1,3 +1,5 @@
+from random import randint
+
 class AVLNode:
     def __init__(self, score, value):
         # data
@@ -124,14 +126,14 @@ class AVLTree:
 
     def _left_rotation(self, parent, node):
         new_node = node.right_child()
+        node.set_right_child(new_node.left_child())
         new_node.set_left_child(node)
-        node.set_right_child(None)
         self._insert_parent(parent, new_node)
 
     def _right_rotation(self, parent, node):
         new_node = node.left_child()
+        node.set_left_child(new_node.right_child())
         new_node.set_right_child(node)
-        node.set_left_child(None)
         self._insert_parent(parent, new_node)
 
     def _left_right_roration(self, parent, node):
@@ -191,7 +193,7 @@ class AVLTree:
 
 
 if __name__ == "__main__":
-    tree = AVLTree()
+    """tree = AVLTree()
     tree.add_value("3")
     tree.add_value("2")
     tree.add_value("1")
@@ -220,4 +222,22 @@ if __name__ == "__main__":
     tree.add_value("3")
     tree.add_value("3")
     tree.print()
+    print(tree.height())"""
+    tree = AVLTree()
+    #values = ["386", "756", "397", "639", "643", "829"]
+    values = [str(randint(1,1000)) for x in range(100)]
+    for value in values:
+        tree.add_value(value)
+        trav = tree.in_order_traversal_list()
+        print(str(len(trav)) + ":" + str(trav) + ":" + str(value))
+        tree.print()
     print(tree.height())
+    """tree = AVLTree()
+    for x in range(1000):
+        new_value = str(randint(1,1000))
+        tree.add_value(new_value)
+        trav = tree.in_order_traversal_list()
+        print(str(len(trav)) + ":" + str(trav) + ":" + str(new_value))
+        #print(tree.height())
+    tree.print()
+    print(tree.height())"""
