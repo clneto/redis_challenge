@@ -2,30 +2,11 @@ from threading import RLock
 from .expiration_manager import ExpirationManager
 from .redis_data_store import RedisDataStore
 from ..utils import Singleton
+from .value_node import ValueNode
+from .zset_node import ZSetNode
 
 @Singleton
 class MiniRedisCore(RedisDataStore):
-
-    class DataNode:
-        def __init__(self, key, value):
-            self.lock = RLock()
-            self.value = value
-            self.key = key
-
-        def setValue(self, value):
-            with self.lock:
-                self.value = value
-
-
-        def getValue(self):
-            with self.lock:
-                value = self.value
-            return str(value)
-
-        def incr(self):
-            with self.lock:
-                self.value += 1
-            return "OK"
 
     def __init__(self):
         self._global_lock = RLock()
@@ -43,7 +24,7 @@ class MiniRedisCore(RedisDataStore):
             if key not in self._core_data:
                 return "(nil)"
 
-        value = self._core_data[key].getValue()
+        value = self._core_data[key].get_value()
 
         if value is None:
             return "(nil)"
@@ -52,14 +33,14 @@ class MiniRedisCore(RedisDataStore):
     def set(self, key, value, ex):
         with self._global_lock:
             if not key in self._core_data:
-                nodeValue = self.DataNode(key, value)
+                node = ValueNode(key, value)
                 self._db_size += 1
-                self._core_data[key] = nodeValue
+                self._core_data[key] = node
 
-        self._core_data[key].setValue(value)
+        self._core_data[key].set_value(value)
 
         if ex is not None:
-            self._expiration_manager.addExpirationKey(key, ex)
+            self._expiration_manager.add_expiration_key(key, ex)
 
         return "OK"
 
@@ -82,13 +63,34 @@ class MiniRedisCore(RedisDataStore):
         return "(nil)"
 
     def zadd(self, key, score, member):
-        pass
+        with self._global_lock:
+            if key not in self._core_data:
+                node = ZSetNode()
+                self._db_size += 1
+                self._core_data[key] = node
+            else:
+                node = self._core_data[key]
+
+        node.zadd(score, member)
+        return "OK"
 
     def zcard(self, key):
-        pass
+        with self._global_lock:
+            node = self._core_data.get(key, None)
+        if node is None:
+            return "(nil)"
+        return node.zcard()
 
     def zrank(self, key, member):
-        pass
+        with self._global_lock:
+            node = self._core_data.get(key, None)
+        if node is None:
+            return "(nil)"
+        return node.zrank(member)
 
     def zrange(self, key, start, stop):
-        pass
+        with self._global_lock:
+            node = self._core_data.get(key, None)
+        if node is None:
+            return "(nil)"
+        return node.zrange(start, stop)

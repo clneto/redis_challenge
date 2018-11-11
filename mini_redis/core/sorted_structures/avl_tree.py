@@ -8,6 +8,7 @@ class AVLNode:
         # tree values
         self._score = score # for ordering
         self._height = 0 # leaf
+        self._card = 1
 
         # childs
         self._left = None
@@ -15,15 +16,27 @@ class AVLNode:
 
 
     # force cache recalculation
-    def recalculate_height(self):
+    def recalculate_cache(self):
         has_left_child = self._left is not None
         has_right_child = self._right is not None
+        self._card = 1
+        if has_left_child:
+            self._card += self._left.cardinality()
+        if has_right_child:
+            self._card += self._right.cardinality()
+
         if not has_left_child and not has_right_child:
             self._height = 0
             return
         max_child_height = max(0 if self._left is None else self._left.height(),
                                0 if self._right is None else self._right.height())
         self._height = max_child_height + 1
+
+    def add_value(self, new_value):
+        if type(self._value) is list:
+            self._value.append(new_value)
+        else:
+            self._value = [self._value, new_value]
 
     def set_left_child(self, left):
         self._left = left
@@ -35,6 +48,9 @@ class AVLNode:
 
     def score(self):
         return self._score
+
+    def cardinality(self):
+        return self._card
 
     def value(self):
         return self._value
@@ -61,9 +77,6 @@ class AVLTree:
     def height(self):
         return 0 if self._root is None else self._root.height()
 
-    def _score_function(self, value):
-        return int(value)
-
     def _insert_parent(self, parent, new_child):
         if parent is None:
             self._root = new_child
@@ -72,39 +85,41 @@ class AVLTree:
         else:
             parent.set_right_child(new_child)
 
-    def add_value(self, value):
-        insert_score = self._score_function(value)
-        new_node = AVLNode(insert_score, value)
+    def add_value(self, score, value):
+        new_node = AVLNode(score, value)
 
         # default insertion on BST
         it = self._root
         path = []
-        while it is not None:
+        while it is not None and it.score() != score:
             path.append(it)
-            if it.score() > insert_score:
+            if it.score() > score:
                 it = it.left_child()
             else:
                 it = it.right_child()
 
-        insertion_node = path[-1] if len(path) > 0 else None
-        self._insert_parent(insertion_node, new_node)
-        path.append(new_node)
-        self.rebalance_tree(path, 2)
+        if it is not None:
+            it.add_value(value)
+        else:
+            insertion_node = path[-1] if len(path) > 0 else None
+            self._insert_parent(insertion_node, new_node)
+            path.append(new_node)
+            self.rebalance_tree(path, 2)
 
     def _left_rotation(self, parent, node):
         new_node = node.right_child()
         node.set_right_child(new_node.left_child())
         new_node.set_left_child(node)
-        node.recalculate_height()
-        new_node.recalculate_height()
+        node.recalculate_cache()
+        new_node.recalculate_cache()
         self._insert_parent(parent, new_node)
 
     def _right_rotation(self, parent, node):
         new_node = node.left_child()
         node.set_left_child(new_node.right_child())
         new_node.set_right_child(node)
-        node.recalculate_height()
-        new_node.recalculate_height()
+        node.recalculate_cache()
+        new_node.recalculate_cache()
         self._insert_parent(parent, new_node)
 
     def _left_right_roration(self, parent, node):
@@ -120,7 +135,7 @@ class AVLTree:
         # time to balance
         for offset in range(start, len(affected_nodes)+1):
             node = affected_nodes[-offset]
-            node.recalculate_height()
+            node.recalculate_cache()
             if abs(node.balance()) > 1: # unbalanced
 
                 parent = affected_nodes[-offset-1] if offset < len(affected_nodes) else None
@@ -144,8 +159,8 @@ class AVLTree:
                     else:
                         self._left_rotation(parent, node)
 
-    def get_value(self, value):
-        target_score = self._score_function(value)
+    def get_value(self, score):
+        target_score = score
         it = self._root
         while it is not None and it.score() != target_score:
             if it.score() > target_score:
@@ -155,11 +170,66 @@ class AVLTree:
         return it.value() if it is not None else None
 
 
+
+    def get_rank(self, score):
+
+        def acc_cardinality(node, score):
+            current_acc = 1 if node.score() < score else 0
+            left_acc = (node.left_child().cardinality() if node.left_child() is not None else 0)
+            return current_acc + left_acc
+
+        target_score = score
+        rank = 0
+
+        it = self._root
+        while it is not None and it.score() != target_score:
+            if it.score() > target_score:
+                it = it.left_child()
+            else:
+                rank += acc_cardinality(it, target_score)
+                it = it.right_child()
+        if it is not None:
+            rank += acc_cardinality(it, target_score)
+        return rank+1
+
     def remove_value(self, value):
-        pass
+        target_key = value
+        it = self._root
+
+        path = []
+        while it is not None and it.score() != target_key:
+            path.append(self._root)
+            if it.score() > target_key:
+                it = it.left_child()
+            else:
+                it = it.right_child()
+
+        if it is None:
+            return False
+        else:
+            pass
 
     def get_range(self, lower_bound, upper_bound):
-        pass
+        stack = []
+        it = self._root
+        ans = []
+
+        # modified order traversal algorithm
+        while len(stack) > 0 or it is not None:
+            while it is not None and it.score() >= lower_bound:
+                stack.append(it)
+                it = it.left_child()
+            if len(stack) > 0:
+                it = stack.pop()
+            if it is not None:
+                if it.score() <= upper_bound:
+                    if it.score() >= lower_bound:
+                        ans.append(it)
+                    it = it.right_child()
+                else:
+                    it = None
+
+        return [x.value() for x in ans]
 
     def in_order_traversal_list(self):
         stack = []
@@ -176,6 +246,19 @@ class AVLTree:
 
         return [x.value() for x in ans]
 
+    def post_order_traversal(self):
+
+        it = self._root
+        stack = []
+        while len(stack) > 0 or it is not None:
+            if it is not None:
+                stack.append(it)
+                stack.append(it.left_child())
+                stack.append(it.right_child())
+            it = stack.pop()
+
+
+
     def print(self):
         print(self._rec_print(self._root))
 
@@ -187,14 +270,24 @@ class AVLTree:
 
 
 if __name__ == "__main__":
+    print("Testing AVL Tree")
     tree = AVLTree()
     #values = ["386", "756", "397", "639", "643", "829"]
     # tweeks must be made to support repeated keys
     values = sample([x for x in range(1000)], 16)
     #values = ["293", "293", "293", "292"]
     for value in values:
-        tree.add_value(value)
+        tree.add_value(value, value)
         trav = tree.in_order_traversal_list()
         print(str(len(trav)) + ":" + str(trav) + ":" + str(value))
         tree.print()
+
+    for value in values:
+        print("Rank of {}: {}".format(value, tree.get_rank(value)))
+
     print(tree.height())
+    print(tree.get_range(0, 1000))
+    print(tree.get_range(0, 500))
+    print(tree.get_range(500, 1000))
+    print(tree.get_range(750, 1000))
+    print(tree.get_range(250, 555))
