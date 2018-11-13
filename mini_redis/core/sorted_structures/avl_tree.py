@@ -193,6 +193,7 @@ class AVLTree:
         return rank+1
 
     def remove_value(self, value):
+        # incomplete implementation
         target_key = value
         it = self._root
 
@@ -247,7 +248,7 @@ class AVLTree:
         return [x.value() for x in ans]
 
     def post_order_traversal(self):
-
+        # incomplete implementation
         it = self._root
         stack = []
         while len(stack) > 0 or it is not None:
